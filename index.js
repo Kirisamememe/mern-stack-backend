@@ -3,17 +3,27 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 app.use(cors());
+app.use((req, res, next) => {
+    console.log('Request Headers:', req.headers)
+    console.log('Request URL:', req.url)
+    console.log('Request Method:', req.method)
+    res.on('finish', () => {
+        console.log('Response Headers:', res.getHeaders())
+    })
+    next()
+})
+  
 app.use(express.urlencoded({ extended: true}));
 app.use(express.json());
 const itemRouter = require("./routes/itemRoutes");
 const userRouter = require("./routes/userRoutes");
 
-app.use("/", itemRouter)
-app.use("/user", userRouter)
+app.use("/api", itemRouter)
+app.use("/api/user", userRouter)
 
 
 // Connecting to port
-const port = process.env.PORT || 5050
+const port = 5050 || process.env.PORT
 
 app.listen(port, () => {
     console.log(`Listening on ${port}`);
