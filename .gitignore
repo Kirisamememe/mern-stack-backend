@@ -6,7 +6,7 @@
 *.log
 
 # Runtime data
-.env
+#.env
 
 # Build directory
 /dist
