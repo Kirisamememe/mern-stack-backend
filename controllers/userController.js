@@ -34,22 +34,25 @@ exports.register = async(req, res) => {
             return res.status(400).json({ message: "現在は招待された方しか登録できません" });
         }
 
-        const index = codeDocument.code.indexOf(req.body.code);
-        codeDocument.code.splice(index, 1)
-        await codeDocument.save();
-
         const existingUsersCount = await UserModel.countDocuments({});
         if (existingUsersCount >= 20) {
             console.log("ユーザー数が上限に達しています")
             return res.status(400).json({ message: "ユーザー数が上限に達しています" });
         }
 
-        if (!req.body.email.includes("@") || req.body.password.length < 8 || req.body.password.length > 16) {
+        const regex = /^[a-zA-Z0-9-_]+$/
+        const isPasswordValid = (6 < value.length && value.length < 20) && regex.test(value)
+
+        if (!req.body.email.includes("@") || !isPasswordValid) {
             return res.status(400).json({ message: "入力が正しくありません" });
         }
 
         console.log(req.body);
         await UserModel.create(req.body);
+
+        const index = codeDocument.code.indexOf(req.body.code);
+        codeDocument.code.splice(index, 1)
+        await codeDocument.save();
 
         return res.status(200).json({ message: "ユーザー登録成功" })
     }catch(err) {
