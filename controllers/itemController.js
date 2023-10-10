@@ -18,8 +18,8 @@ exports.readAllItem = async (req, res) => {
 exports.readSingleItem = async (req, res) => {
     try{
         await connectDB()
-        const skip = parseInt(req.query.skip) || 0
-        const limit = parseInt(req.query.limit) || 10
+        // const skip = parseInt(req.query.skip) || 0
+        // const limit = parseInt(req.query.limit) || 10
 
         const singleItem = await ItemModel.findById(req.params.id)
 
@@ -27,21 +27,37 @@ exports.readSingleItem = async (req, res) => {
             return res.status(400).json({ message: "アイテムが存在しません" })
         }
 
+        const fields = req.query.fields ? req.query.fields.split(',') : []
+        console.log(fields)
+        if (fields.length > 0) {
+            let itemInfo = {}
+            
+            fields.forEach(field => {
+                if (singleItem[field] !== undefined) {
+                    itemInfo[field] = singleItem[field]
+                }
+            })
+
+            console.log(itemInfo)
+            return res.status(200).json({ message: "アイテム情報読み取り成功", itemInfo: itemInfo })
+        }
+
         //投稿者のユーザー名取得
         //userの情報をオブジェクトで取得
         const user = await UserModel.findById(singleItem.userId)
-        // const loginUser = await UserModel.findById(req.body.userId)
+        
 
         //データベース用のオブジェクトを通常のオブジェクトに変換
         const singleItemObject = singleItem.toObject()
 
-        //三項演算子でnameの文字列取得
+        
         singleItemObject.name = user ? user.name : "Unknown User"
 
         //コメント情報を取得
         //とりあえずcommentIdを全部取得
         const comments = await CommentModel.find({ '_id': { $in: singleItemObject.comment } })
-        .sort({ date: -1 }).skip(skip).limit(limit)
+        .sort({ date: -1 })
+        // .skip(skip).limit(limit)
 
         const populatedComments = await Promise.all(comments.map(async (comment) => {
             const commentUser = await UserModel.findById(comment.userId)
@@ -73,6 +89,7 @@ exports.readSingleItem = async (req, res) => {
 
         singleItemObject.comments = populatedComments
 
+        
         // console.log(JSON.stringify(singleItemObject, null, 2))
         return res.status(200).json({ message: "アイテム読み取り成功（シングル）", singleItem: singleItemObject })
     }catch(err) {
@@ -412,7 +429,12 @@ exports.createItem = async (req, res) => {
 
         console.log(req.body)
 
-        await ItemModel.create(req.body)
+        const newItem = await ItemModel.create(req.body)
+        const newItemId = newItem._id
+
+        user.posts.push(newItemId)
+        await user.save()
+
         return res.status(200).json({ message: "アイテム作成成功" })
     } catch(err) {
         console.log(err)

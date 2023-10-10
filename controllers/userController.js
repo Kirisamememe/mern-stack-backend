@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken")
 const connectDB = require("../models/database")
 const { UserModel, CodeModel, BanInfoModel } = require("../models/schemaModels")
+const { use } = require("../routes/userRoutes")
 
 // USER functions
 const rateLimitMap = new Map()
@@ -24,21 +25,47 @@ const incrementGlobalCount = () => {
     }
 }
 
+//Read User
+// exports.readUser = async (req, res) => {
+//     try {
+//         await connectDB()
+//         const user = await UserModel.findById(req.params.userId)
+
+//     } catch (error) {
+        
+//     }
+// }
 
 //Read User
 exports.readUser = async (req, res) => {
     try {
         await connectDB()
         const user = await UserModel.findById(req.params.userId)
-
+        
         if (!user) {
             // console.log("チェックポイント1")
             return res.status(400).json({ message: "ユーザーが存在しません" })
         }
+        
+        const fields = req.query.fields ? req.query.fields.split(',') : []
+        let response = {}
+        
+
+        if (fields.length > 0) {
+            fields.forEach(field => {
+                if (user[field] !== undefined) {
+                    response[field] = user[field]
+                }
+            })
+        }
+        else {
+            response = user
+        }
 
         // const userInfo = user.toObject()
-        const collect = user.collect
-        return res.status(200).json({ message: "ユーザ情報読み取り成功", collect: collect })
+        // const collect = user.collect
+        console.log(response)
+        return res.status(200).json({ message: "ユーザ情報読み取り成功", userData: response })
     } catch (error) {
         console.log(error)
         return res.status(400).json({ message: "ユーザー情報を読み取れませんでした" })
@@ -52,6 +79,7 @@ exports.register = async(req, res) => {
         const rateLimitInfo = rateLimitMap.get(clientIP)
         const currentTime = new Date()
 
+
         if (rateLimitInfo && new Date() < rateLimitInfo.blockUntil) {
             incrementGlobalCount()
 
@@ -61,6 +89,7 @@ exports.register = async(req, res) => {
         await connectDB();
         const codeDocument = await CodeModel.findOne({})
         const codeArray = codeDocument.code
+
 
         if (!codeArray.includes(req.body.code)) {
             incrementGlobalCount()
@@ -80,30 +109,33 @@ exports.register = async(req, res) => {
 
             return res.status(400).json({ message: "現在は招待された方しか登録できません" })
         }
-
+        
         const existingUsersCount = await UserModel.countDocuments({})
         if (existingUsersCount >= 20) {
             console.log("ユーザー数が上限に達しています")
             return res.status(400).json({ message: "ユーザー数が上限に達しています" })
         }
-
+        
+        // console.log(6 < req.body.password.length && req.body.password.length < 20)
         const regex = /^[a-zA-Z0-9-_]+$/
-        const isPasswordValid = (6 < value.length && value.length < 20) && regex.test(value)
+        const isPasswordValid = (6 < req.body.password.length && req.body.password.length < 20) && regex.test(req.body.password.length)
 
         if (!req.body.email.includes("@") || !isPasswordValid) {
             return res.status(400).json({ message: "入力が正しくありません" })
         }
-
-        console.log(req.body);
-        await UserModel.create(req.body);
-
+        
+        
+        req.body.signature = `我が名は${req.body.name}、初めてこのAppを使う者！以後お見知り置きを！`
+        req.body.avatar = "https://s2.loli.net/2023/10/09/I3wU4WaPunhJFgH.png"
+        await UserModel.create(req.body)
+        
         const index = codeDocument.code.indexOf(req.body.code);
         codeDocument.code.splice(index, 1)
-        await codeDocument.save();
+        await codeDocument.save()
 
         return res.status(200).json({ message: "ユーザー登録成功" })
     }catch(err) {
-        return res.status(500).json({ message: "ユーザー登録失敗" })
+        return res.status(500).json({ message: "ユーザー登録失敗だよ" })
     }
 }
 
@@ -120,7 +152,7 @@ exports.login = async(req, res) => {
         if (rateLimitInfo && new Date() < rateLimitInfo.blockUntil) {
             incrementGlobalCount()
 
-            return res.status(400).json({ message: "BANされています" });
+            return res.status(400).json({ message: "今はBANされています" });
         }
 
         await connectDB()

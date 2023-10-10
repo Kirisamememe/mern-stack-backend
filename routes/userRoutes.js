@@ -12,7 +12,7 @@ router.post("/login", userController.login)
 // Logout User
 router.post("/logout", userController.logout);
 
-// Read User
+// Read UsersCollectedItem
 router.get("/readUser/:userId", userController.readUser)
 
 module.exports = router;

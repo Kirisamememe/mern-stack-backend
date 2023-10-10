@@ -37,6 +37,10 @@ const UserSchema = new Schema({
         type: String,
         required: true
     },
+    signature: {
+        type: String,
+        required: true
+    },
     email: {
         type: String,
         required: true,
@@ -50,12 +54,15 @@ const UserSchema = new Schema({
         type: String,
         required: false
     },
+    posts: [{ type: Schema.Types.ObjectId, ref: 'Item' }],
     collect: [
         {
             itemId: { type: Schema.Types.ObjectId, ref: 'Item' },
             date: { type: Date, default: Date.now },
         }
-    ]
+    ],
+    follow: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    follower: [{ type: Schema.Types.ObjectId, ref: 'User' }]
 })
 
 const CodeSchema = new Schema({
