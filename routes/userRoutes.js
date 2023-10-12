@@ -15,4 +15,7 @@ router.post("/logout", userController.logout);
 // Read UsersCollectedItem
 router.get("/readUser/:userId", userController.readUser)
 
+//Follow
+router.post("/:yourId/:action", userController.follow)
+
 module.exports = router;

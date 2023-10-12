@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken")
 const connectDB = require("../models/database")
+const { default: mongoose } = require("mongoose")
 const { UserModel, CodeModel, BanInfoModel } = require("../models/schemaModels")
 const { use } = require("../routes/userRoutes")
 
@@ -24,17 +25,6 @@ const incrementGlobalCount = () => {
         process.exit(1)
     }
 }
-
-//Read User
-// exports.readUser = async (req, res) => {
-//     try {
-//         await connectDB()
-//         const user = await UserModel.findById(req.params.userId)
-
-//     } catch (error) {
-        
-//     }
-// }
 
 //Read User
 exports.readUser = async (req, res) => {
@@ -249,7 +239,75 @@ exports.login = async(req, res) => {
 }
 
 // Logout User
-exports.logout =  (req, res) => {
+exports.logout = (req, res) => {
     // Token blacklist logic here
     return res.status(200).json({ message: "ログアウト成功" })
+}
+
+
+
+//Follow
+exports.follow = async (req, res) => {
+    // console.log('チェックポイント1')
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    try {
+        await connectDB()
+        const {yourId, action} = req.params
+
+        console.log(action)
+        console.log(req.body.myId)
+        console.log(yourId)
+
+        const userFollow = await UserModel.findById(req.body.myId).session(session)
+        const userBeFollowed = await UserModel.findById(yourId).session(session)
+
+        if (!userFollow || !userBeFollowed) {
+            await session.abortTransaction()
+            session.endSession()
+            return res.status(400).json({ message: "ユーザーが存在しません"})
+        }
+
+
+
+        if (action === 'follow') {
+
+            await UserModel.updateOne(
+                { _id: userFollow._id },
+                { $addToSet: { follow: userBeFollowed._id } }
+            ).session(session)
+
+            await UserModel.updateOne(
+                { _id: userBeFollowed._id },
+                { $addToSet: { follower: userFollow._id } }
+            ).session(session)
+
+            await session.commitTransaction()
+            session.endSession()
+
+            return res.status(200).json({ message: "フォローしました" })
+        }
+        else if (action === 'unFollow') {
+
+            await UserModel.updateOne(
+                { _id: userFollow._id },
+                { $pull: { follow: userBeFollowed._id } }
+            ).session(session)
+    
+            await UserModel.updateOne(
+                { _id: userBeFollowed._id },
+                { $pull: { follower: userFollow._id } }
+            ).session(session)
+    
+            await session.commitTransaction()
+            session.endSession()
+    
+            return res.status(200).json({ message: "フォローしました" })
+        }
+
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({ message: "問題発生、フォローできませんでした" })
+    }
 }
